@@ -67,12 +67,7 @@ button.link { display: inline; height: auto; border: 0; background: none; paddin
   border-bottom: 1px solid var(--line);
 }
 .top h1 { font-size: 18px; margin: 0; letter-spacing: 0.01em; display: flex; align-items: center; }
-.mark {
-  display: inline-grid; place-items: center;
-  width: 24px; height: 24px; margin-right: 3px;
-  background: var(--accent); color: var(--accent-text);
-  border-radius: 6px;
-}
+.mark { display: block; width: 24px; height: 24px; margin-right: 7px; }
 
 /* Playlists dropdown */
 .menu-backdrop { position: fixed; inset: 0; z-index: 6; }

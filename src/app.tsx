@@ -379,7 +379,8 @@ export function App() {
     <>
       <header class="top">
         <h1>
-          <span class="mark">Y</span>Tailor
+          <img class="mark" src={`${import.meta.env.BASE_URL}favicon.svg`} alt="" width="24" height="24" />
+          YTailor
         </h1>
         <span class="status">
           {progress ?? (feedAt ? `Updated ${fmtAge(feedAt)}` : '')}
