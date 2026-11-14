@@ -11,7 +11,10 @@ interface Props {
   onClose: () => void;
 }
 
-const pageUrl = (id: string) => `https://www.youtube.com/playlist?list=${encodeURIComponent(id)}`;
+/** YouTube's reserved id for the signed-in user's Watch Later playlist. */
+const WATCH_LATER = 'WL';
+
+const pageUrl =(id: string) => `https://www.youtube.com/playlist?list=${encodeURIComponent(id)}`;
 /** `playnext=1` makes YouTube jump straight into watch mode on the first video. */
 const playUrl = (id: string) => `${pageUrl(id)}&playnext=1`;
 
@@ -22,38 +25,33 @@ export function PlaylistLinks({ playlists, signedIn, playlistUsed, onOpen, onClo
     onOpen(id);
     onClose();
   };
+  const row = (id: string, title: string, sub: string, onClick: () => void) => (
+    <li key={id}>
+      <a class="row-title" href={pageUrl(id)} target="_blank" rel="noopener" onClick={onClick}>
+        {title}
+        <small>{sub}</small>
+      </a>
+      <a class="btn play" href={playUrl(id)} target="_blank" rel="noopener" aria-label={`Play ${title}`} onClick={onClick}>
+        <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
+          <path d="M7 4.5v15l12-7.5z" />
+        </svg>
+        Play
+      </a>
+    </li>
+  );
   return (
     <>
       <div class="menu-backdrop" onClick={onClose} />
       <div class="menu" role="dialog" aria-label="Playlists">
+        <ul class="rows">
+          {/* YouTube's own Watch Later: closed to the API, but its page opens fine on youtube.com. Always first. */}
+          {row(WATCH_LATER, 'Watch Later', 'YouTube', onClose)}
+          {sorted?.map((p) => row(p.id, p.title, `${p.count} videos`, () => open(p.id)))}
+        </ul>
         {!sorted ? (
           <p class="empty">{signedIn ? 'Loading playlists…' : 'Sign in to see your playlists.'}</p>
-        ) : sorted.length === 0 ? (
-          <p class="empty">You have no playlists yet.</p>
         ) : (
-          <ul class="rows">
-            {sorted.map((p) => (
-              <li key={p.id}>
-                <a class="row-title" href={pageUrl(p.id)} target="_blank" rel="noopener" onClick={() => open(p.id)}>
-                  {p.title}
-                  <small>{p.count} videos</small>
-                </a>
-                <a
-                  class="btn play"
-                  href={playUrl(p.id)}
-                  target="_blank"
-                  rel="noopener"
-                  aria-label={`Play ${p.title}`}
-                  onClick={() => open(p.id)}
-                >
-                  <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
-                    <path d="M7 4.5v15l12-7.5z" />
-                  </svg>
-                  Play
-                </a>
-              </li>
-            ))}
-          </ul>
+          sorted.length === 0 && <p class="empty">You have no playlists yet.</p>
         )}
       </div>
     </>
