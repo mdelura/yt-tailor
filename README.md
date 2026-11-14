@@ -21,7 +21,7 @@ Open <http://localhost:5180/?demo> for sample data.
 1. Go to <https://console.cloud.google.com/> and create a project.
 2. **APIs & Services → Library**: enable **YouTube Data API v3** and **Google Drive API** (Drive is only used to sync your settings).
 3. **APIs & Services → OAuth consent screen** (Google Auth Platform): user type **External**, fill in the app name and your email. Under **Audience → Test users**, add your own Google account. Leave the app in *Testing*; no verification is needed for personal use.
-4. **Data access → Add scopes**: add `https://www.googleapis.com/auth/youtube` and `https://www.googleapis.com/auth/drive.appdata`.
+4. **Data access → Add scopes**: add `https://www.googleapis.com/auth/youtube` and `https://www.googleapis.com/auth/drive.appdata` (the app also asks for `openid` and `email`, which need no setup).
 5. **Clients → Create client**: type **Web application**. Under **Authorised JavaScript origins** add:
    - `http://localhost:5180`
    - your hosted origin, e.g. `https://<user>.github.io` (origin only, no path)
@@ -68,7 +68,7 @@ Favourites, rules and the per-channel count are saved to a hidden app-data folde
 - **YouTube's own Watch Later cannot be used.** YouTube blocks it for all third-party apps. The clock icon therefore adds to a normal playlist of your choice: it asks which one on first use, and **Settings → Favourites** changes it. A video already in that playlist is not added twice.
 - **Quota:** 10,000 units a day. A full refresh costs about 2 units per subscribed channel; each playlist add costs 50. The footer shows today's estimate. The feed is cached and auto-refreshes at most every 30 minutes.
 - **Adding to the top** only works on playlists with manual ordering (the default).
-- **Sign-in lasts about an hour**; after that, tap *Sign in* again (no consent screen the second time). The cached feed stays visible while signed out.
+- **Sign-in lasts about an hour**: a browser-only app gets no refresh token from Google. When it runs out, a banner offers *Continue*, and adding a video or opening playlists renews it on the spot. The app remembers your account's email as a login hint, so the Google popup skips the account chooser and usually closes by itself. The cached feed stays visible meanwhile.
 - **Shorts filtering** relies on YouTube's per-channel `UULF…` (videos) and `UULV…` (live) playlists. They work reliably but are not officially documented.
 
 ## Terms

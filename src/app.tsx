@@ -6,7 +6,7 @@ import { runRules, summarise } from './rules';
 import { syncSettings } from './sync';
 import { DAILY_QUOTA, getQuota } from './api/quota';
 import { describeDriveError, readRemote, writeRemote } from './api/drive';
-import { CLIENT_ID, getToken, hasDriveScope, signIn, signOut } from './auth';
+import { CLIENT_ID, getToken, hasDriveScope, sessionExpired, signIn, signOut, tokenExpiresAt } from './auth';
 import { demoChannels, demoPlaylists, demoVideos, IS_DEMO } from './demo';
 import { fmtAge } from './format';
 import { cacheClear, cacheGet, cacheSet } from './store/cache';
@@ -74,6 +74,23 @@ export function App() {
     setToast(msg);
     setTimeout(() => setToast((t) => (t === msg ? null : t)), 5000);
   };
+
+  /**
+   * Called first thing from a click: if the sign-in ran out since last time, renews it right
+   * away (still inside the click, so the popup is allowed) before the action goes on.
+   */
+  async function renewIfExpired(): Promise<boolean> {
+    if (IS_DEMO || getToken() || !sessionExpired()) return true;
+    try {
+      await signIn();
+      setSignedIn(true);
+      syncNow();
+      return true;
+    } catch (e) {
+      fail(e);
+      return false;
+    }
+  }
 
   const fail = (e: unknown) => {
     if (e instanceof AuthError) setSignedIn(false);
@@ -272,12 +289,28 @@ export function App() {
     return () => document.removeEventListener('visibilitychange', onVisible);
   }, []);
 
+  // Show the "sign-in expired" prompt when the token runs out, not only at the next failed request.
+  useEffect(() => {
+    if (IS_DEMO || !signedIn) return;
+    const at = tokenExpiresAt();
+    if (at === null) return setSignedIn(false);
+    const timer = setTimeout(() => setSignedIn(!!getToken()), Math.max(0, at - Date.now()) + 1000);
+    // Timers are paused in sleeping tabs; check again when the tab comes back.
+    const onVisible = () => document.visibilityState === 'visible' && !getToken() && setSignedIn(false);
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [signedIn]);
+
   async function onSignIn() {
     try {
       await signIn();
       setSignedIn(true);
       await syncNow();
-      refresh();
+      // Renewing an expired sign-in should not cost a full reload of a feed that is still fresh.
+      if (!feedAt || Date.now() - feedAt > FEED_TTL) refresh();
     } catch (e) {
       fail(e);
     }
@@ -304,7 +337,8 @@ export function App() {
 
   /** One-tap add to the playlist standing in for Watch Later; the first tap asks which playlist that is. */
   async function saveLater(v: Video, target: WatchLater | undefined = live.current.settings.watchLater) {
-    if (!signedIn) return notify('Sign in to add videos to playlists.');
+    if (!(await renewIfExpired())) return;
+    if (!getToken() && !IS_DEMO) return notify('Sign in to add videos to playlists.');
     if (!target) return openAdd(v, true);
     setLater((m) => ({ ...m, [v.id]: 'busy' }));
     try {
@@ -326,7 +360,8 @@ export function App() {
   }
 
   async function openAdd(v: Video, forLater = false) {
-    if (!signedIn) return notify('Sign in to add videos to playlists.');
+    if (!(await renewIfExpired())) return;
+    if (!getToken() && !IS_DEMO) return notify('Sign in to add videos to playlists.');
     setChoosing(forLater);
     setAdding(v);
     try {
@@ -338,6 +373,7 @@ export function App() {
   }
 
   async function openMenu() {
+    if (!(await renewIfExpired())) return;
     setShowMenu(true);
     try {
       await loadPlaylists();
@@ -375,6 +411,9 @@ export function App() {
     [videos, channels, settings.favourites, settings.perChannel],
   );
 
+  /** Signed in earlier and the hour ran out (not signed out on purpose). */
+  const renew = !IS_DEMO && !!CLIENT_ID && !signedIn && sessionExpired();
+
   return (
     <>
       <header class="top">
@@ -394,12 +433,12 @@ export function App() {
           <span class="label">Playlists</span>
         </button>
         {signedIn ? (
-          <button onClick={() => refresh(true)} disabled={!!progress}>
+          <button onClick={async () => (await renewIfExpired()) && refresh(true)} disabled={!!progress}>
             Refresh
           </button>
         ) : (
           <button class="primary" onClick={onSignIn} disabled={!CLIENT_ID}>
-            Sign in with Google
+            {renew ? 'Sign in again' : 'Sign in with Google'}
           </button>
         )}
         <button class="icon" aria-label="Settings" title="Settings" onClick={() => setShowSettings(true)}>
@@ -418,6 +457,18 @@ export function App() {
           />
         )}
       </header>
+
+      {renew && (
+        <p class="banner renew" role="status">
+          <span>
+            Google sign-ins last about an hour, so this one has run out.
+            {videos.length > 0 && ' The feed below is from before.'}
+          </span>
+          <button class="primary" onClick={onSignIn}>
+            Continue
+          </button>
+        </p>
+      )}
 
       {!CLIENT_ID && !IS_DEMO && (
         <p class="banner">

@@ -90,6 +90,7 @@ button.link { display: inline; height: auto; border: 0; background: none; paddin
 .play:hover { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
 .status { flex: 1; min-width: 0; color: var(--muted); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .banner { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 14px; }
+.banner.renew { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; justify-content: space-between; }
 
 /* Sections */
 h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin: 28px 0 12px; }
