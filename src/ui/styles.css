@@ -153,6 +153,24 @@ h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.08em; color: 
 .add svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
 .add:hover:not(:disabled) { background: var(--line); color: var(--accent-ink); }
 .add:active { transform: scale(0.9); }
+/* Watch Later: over the thumbnail's top-right corner. Shown on hover or focus; always on touch screens. */
+.later {
+  position: absolute; top: 6px; right: 6px; z-index: 1;
+  width: 32px; height: 32px; padding: 0;
+  border: 0; border-radius: 8px;
+  background: rgba(0, 0, 0, 0.8); color: #fff;
+  opacity: 0;
+  transition: opacity 0.12s, background-color 0.12s, transform 0.08s;
+}
+.later svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.card:hover .later, .later:focus-visible, .later:disabled { opacity: 1; }
+@media (hover: none) { .later { opacity: 1; } }
+.later:disabled { cursor: default; }
+.later:hover:not(:disabled) { background: var(--accent); }
+.later:active { transform: scale(0.9); }
+.later.busy svg { animation: later-pulse 0.8s ease-in-out infinite alternate; }
+.later.done { background: var(--accent); }
+@keyframes later-pulse { to { opacity: 0.35; } }
 .sentinel { height: 1px; }
 
 /* Dialogs */
@@ -185,6 +203,8 @@ h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.08em; color: 
 .field input { background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; }
 .field input[type='number'] { width: 70px; }
 .field input[type='search'] { width: 50%; }
+.field .pair { display: grid; grid-template-columns: 1fr 90px; gap: 8px; width: 60%; }
+.field select:disabled { opacity: 0.5; }
 .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
 
 /* Settings tabs and rules */

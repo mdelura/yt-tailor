@@ -1,4 +1,4 @@
-import type { Rule, Settings } from '../types';
+import type { Rule, Settings, WatchLater } from '../types';
 
 const KEY = 'tailor.settings';
 export const DEFAULTS: Settings = { favourites: [], perChannel: 3, rules: [], updatedAt: 0 };
@@ -24,6 +24,15 @@ function parseRule(r: any): Rule | null {
   };
 }
 
+function parseWatchLater(w: any): WatchLater | undefined {
+  if (!w || typeof w !== 'object' || typeof w.id !== 'string' || !w.id) return undefined;
+  return {
+    id: w.id,
+    title: typeof w.title === 'string' ? w.title : w.id,
+    where: w.where === 'bottom' ? 'bottom' : 'top',
+  };
+}
+
 /** Validates untrusted JSON (localStorage or an imported file) into Settings. */
 export function parseSettings(json: string | null): Settings {
   try {
@@ -34,6 +43,7 @@ export function parseSettings(json: string | null): Settings {
       favourites: strings(v.favourites),
       perChannel: Number.isFinite(n) ? Math.min(10, Math.max(1, n)) : DEFAULTS.perChannel,
       lastPlaylist: typeof v.lastPlaylist === 'string' ? v.lastPlaylist : undefined,
+      watchLater: parseWatchLater(v.watchLater),
       rules: Array.isArray(v.rules) ? v.rules.map(parseRule).filter((r: Rule | null): r is Rule => r !== null) : [],
       updatedAt: Number.isFinite(v.updatedAt) ? v.updatedAt : 0,
     };

@@ -44,10 +44,18 @@ export interface Rule {
   lastRun?: number;
 }
 
+export interface WatchLater {
+  id: string;
+  title: string;
+  where: 'top' | 'bottom';
+}
+
 export interface Settings {
   favourites: string[];
   perChannel: number;
   lastPlaylist?: string;
+  /** YouTube's own Watch Later is closed to third-party apps, so one normal playlist stands in for it. */
+  watchLater?: WatchLater;
   rules: Rule[];
   /** When these settings were last changed (ms); decides which copy wins when syncing. 0 = never. */
   updatedAt: number;
