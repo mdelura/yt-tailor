@@ -7,20 +7,23 @@ interface Props {
   playlists: Playlist[] | null;
   playlistUsed: Record<string, number>;
   busy: boolean;
+  /** Choosing the playlist that stands in for Watch Later, rather than a one-off add. */
+  forLater?: boolean;
   onPick: (p: Playlist, where: Where) => void;
   onClose: () => void;
 }
 
-export function PlaylistMenu({ video, playlists, playlistUsed, busy, onPick, onClose }: Props) {
+export function PlaylistMenu({ video, playlists, playlistUsed, busy, forLater, onPick, onClose }: Props) {
   // Most recently used first, so repeat adds are one tap.
   const sorted = playlists ? byRecentUse(playlists, playlistUsed) : null;
   const lastPlaylist = sorted?.[0] && playlistUsed[sorted[0].id] ? sorted[0].id : undefined;
+  const heading = forLater ? 'Choose your Watch Later playlist' : 'Add to playlist';
   return (
     <div class="overlay" onClick={onClose}>
-      <div class="sheet" role="dialog" aria-label="Add to playlist" onClick={(e) => e.stopPropagation()}>
+      <div class="sheet" role="dialog" aria-label={heading} onClick={(e) => e.stopPropagation()}>
         <header>
           <div>
-            <strong>Add to playlist</strong>
+            <strong>{heading}</strong>
             <div class="sheet-sub">{video.title}</div>
           </div>
           <button class="icon" aria-label="Close" onClick={onClose}>
@@ -49,7 +52,11 @@ export function PlaylistMenu({ video, playlists, playlistUsed, busy, onPick, onC
             ))}
           </ul>
         )}
-        <p class="note">Watch Later is not available to third-party apps. Each add uses 50 quota units.</p>
+        <p class="note">
+          {forLater
+            ? 'YouTube closes its own Watch Later to third-party apps, so one of your playlists stands in for it. From now on the clock icon adds to it in one tap. You can change it in Settings.'
+            : 'Watch Later is not available to third-party apps. Each add uses 50 quota units.'}
+        </p>
       </div>
     </div>
   );

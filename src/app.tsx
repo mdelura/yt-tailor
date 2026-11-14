@@ -11,7 +11,7 @@ import { demoChannels, demoPlaylists, demoVideos, IS_DEMO } from './demo';
 import { fmtAge } from './format';
 import { cacheClear, cacheGet, cacheSet } from './store/cache';
 import { loadSettings, saveSettings } from './store/settings';
-import type { Channel, Playlist, Settings as SettingsT, Video } from './types';
+import type { Channel, Playlist, Settings as SettingsT, Video, WatchLater } from './types';
 
 /** Settings sync state shown in the Settings panel. */
 export type SyncStatus =
@@ -22,6 +22,7 @@ export type SyncStatus =
 import { Feed } from './ui/Feed';
 import { PlaylistLinks } from './ui/PlaylistLinks';
 import { PlaylistMenu } from './ui/PlaylistMenu';
+import type { LaterState } from './ui/VideoCard';
 import { Settings } from './ui/Settings';
 
 const FEED_TTL = 30 * 60_000;
@@ -41,6 +42,9 @@ export function App() {
   const [toast, setToast] = useState<string | null>(null);
   const [adding, setAdding] = useState<Video | null>(null);
   const [addBusy, setAddBusy] = useState(false);
+  /** The playlist dialog is open to choose the Watch Later stand-in, not for a one-off add. */
+  const [choosing, setChoosing] = useState(false);
+  const [later, setLater] = useState<Record<string, LaterState>>({});
   const [showSettings, setShowSettings] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [rulesBusy, setRulesBusy] = useState(false);
@@ -298,8 +302,32 @@ export function App() {
     }
   }
 
-  async function openAdd(v: Video) {
+  /** One-tap add to the playlist standing in for Watch Later; the first tap asks which playlist that is. */
+  async function saveLater(v: Video, target: WatchLater | undefined = live.current.settings.watchLater) {
     if (!signedIn) return notify('Sign in to add videos to playlists.');
+    if (!target) return openAdd(v, true);
+    setLater((m) => ({ ...m, [v.id]: 'busy' }));
+    try {
+      // 1 unit, and saves both the 50-unit insert and a duplicate entry.
+      const dup = !IS_DEMO && (await isInPlaylist(target.id, v.id));
+      if (!dup && !IS_DEMO) await addToPlaylist(target.id, v.id, target.where);
+      setLater((m) => ({ ...m, [v.id]: 'done' }));
+      notify(
+        dup
+          ? `Already in “${target.title}”`
+          : `Added to “${target.title}”${IS_DEMO ? ' (demo, nothing was changed)' : ''}`,
+      );
+    } catch (e) {
+      setLater(({ [v.id]: _, ...rest }) => rest);
+      fail(e);
+    } finally {
+      setQuota(getQuota());
+    }
+  }
+
+  async function openAdd(v: Video, forLater = false) {
+    if (!signedIn) return notify('Sign in to add videos to playlists.');
+    setChoosing(forLater);
     setAdding(v);
     try {
       await loadPlaylists();
@@ -321,6 +349,12 @@ export function App() {
 
   async function pick(p: Playlist, where: Where) {
     if (!adding) return;
+    if (choosing) {
+      const target: WatchLater = { id: p.id, title: p.title, where };
+      updateSettings({ ...live.current.settings, watchLater: target });
+      setAdding(null);
+      return saveLater(adding, target);
+    }
     setAddBusy(true);
     try {
       if (!IS_DEMO) await addToPlaylist(p.id, adding.id, where);
@@ -391,7 +425,15 @@ export function App() {
         </p>
       )}
 
-      <Feed groups={groups} videos={videos} onAdd={openAdd} onOpenSettings={() => setShowSettings(true)} />
+      <Feed
+        groups={groups}
+        videos={videos}
+        onAdd={(v) => openAdd(v)}
+        laterTitle={settings.watchLater?.title}
+        later={later}
+        onLater={(v) => saveLater(v)}
+        onOpenSettings={() => setShowSettings(true)}
+      />
 
       <footer>
         <span>
@@ -409,6 +451,7 @@ export function App() {
           playlists={playlists}
           playlistUsed={settings.playlistUsed}
           busy={addBusy}
+          forLater={choosing}
           onPick={pick}
           onClose={() => setAdding(null)}
         />
