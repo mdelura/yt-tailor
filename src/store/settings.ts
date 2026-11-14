@@ -1,7 +1,29 @@
 import type { Rule, Settings } from '../types';
 
 const KEY = 'tailor.settings';
-export const DEFAULTS: Settings = { favourites: [], perChannel: 3, rules: [], updatedAt: 0 };
+export const DEFAULTS: Settings = { favourites: [], perChannel: 3, playlistUsed: {}, rules: [], updatedAt: 0 };
+const PLAYLIST_USED_CAP = 100;
+
+/** Most recent first and capped, so deleted playlists age out and equal copies serialise the same. */
+export function tidyPlaylistUsed(used: Record<string, number>): Record<string, number> {
+  return Object.fromEntries(
+    Object.entries(used)
+      .sort(([a, x], [b, y]) => y - x || a.localeCompare(b))
+      .slice(0, PLAYLIST_USED_CAP),
+  );
+}
+
+function parsePlaylistUsed(v: any): Record<string, number> {
+  const used: Record<string, number> = {};
+  if (v.playlistUsed && typeof v.playlistUsed === 'object' && !Array.isArray(v.playlistUsed)) {
+    for (const [id, at] of Object.entries(v.playlistUsed)) {
+      if (typeof at === 'number' && Number.isFinite(at) && at > 0) used[id] = at;
+    }
+  }
+  // Settings saved before per-playlist times existed only remembered the last playlist added to.
+  if (typeof v.lastPlaylist === 'string' && !(v.lastPlaylist in used)) used[v.lastPlaylist] = 1;
+  return tidyPlaylistUsed(used);
+}
 
 const strings = (x: unknown): string[] =>
   Array.isArray(x) ? [...new Set(x.filter((v): v is string => typeof v === 'string'))] : [];
@@ -33,7 +55,7 @@ export function parseSettings(json: string | null): Settings {
     return {
       favourites: strings(v.favourites),
       perChannel: Number.isFinite(n) ? Math.min(10, Math.max(1, n)) : DEFAULTS.perChannel,
-      lastPlaylist: typeof v.lastPlaylist === 'string' ? v.lastPlaylist : undefined,
+      playlistUsed: parsePlaylistUsed(v),
       rules: Array.isArray(v.rules) ? v.rules.map(parseRule).filter((r: Rule | null): r is Rule => r !== null) : [],
       updatedAt: Number.isFinite(v.updatedAt) ? v.updatedAt : 0,
     };

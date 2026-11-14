@@ -47,7 +47,8 @@ export interface Rule {
 export interface Settings {
   favourites: string[];
   perChannel: number;
-  lastPlaylist?: string;
+  /** Playlist id → when it was last opened or added to from YTailor (ms). Orders the playlist menus. */
+  playlistUsed: Record<string, number>;
   rules: Rule[];
   /** When these settings were last changed (ms); decides which copy wins when syncing. 0 = never. */
   updatedAt: number;

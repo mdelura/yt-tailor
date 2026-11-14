@@ -82,10 +82,23 @@ export function App() {
     live.current.settings = s;
     setSettings(s);
     saveSettings(s);
-    if (touch) {
-      clearTimeout(live.current.syncTimer);
-      live.current.syncTimer = window.setTimeout(syncNow, SYNC_DEBOUNCE);
-    }
+    if (touch) scheduleSync();
+  };
+
+  const scheduleSync = () => {
+    clearTimeout(live.current.syncTimer);
+    live.current.syncTimer = window.setTimeout(syncNow, SYNC_DEBOUNCE);
+  };
+
+  /**
+   * Remembers that a playlist was just opened or added to. Use times merge per playlist when
+   * syncing, so this does not mark the settings as edited: that would let a device with stale
+   * favourites or rules overwrite newer ones just because a playlist was opened on it.
+   */
+  const markPlaylistUsed = (id: string) => {
+    const current = live.current.settings;
+    updateSettings({ ...current, playlistUsed: { ...current.playlistUsed, [id]: Date.now() } }, false);
+    scheduleSync();
   };
 
   /** Two-way settings sync with the Drive app-data folder. Safe to call at any time. */
@@ -311,7 +324,7 @@ export function App() {
     setAddBusy(true);
     try {
       if (!IS_DEMO) await addToPlaylist(p.id, adding.id, where);
-      updateSettings({ ...live.current.settings, lastPlaylist: p.id });
+      markPlaylistUsed(p.id);
       notify(`Added to the ${where} of “${p.title}”${IS_DEMO ? ' (demo, nothing was changed)' : ''}`);
       setAdding(null);
     } catch (e) {
@@ -364,7 +377,8 @@ export function App() {
           <PlaylistLinks
             playlists={playlists}
             signedIn={signedIn}
-            lastPlaylist={settings.lastPlaylist}
+            playlistUsed={settings.playlistUsed}
+            onOpen={markPlaylistUsed}
             onClose={() => setShowMenu(false)}
           />
         )}
@@ -393,7 +407,7 @@ export function App() {
         <PlaylistMenu
           video={adding}
           playlists={playlists}
-          lastPlaylist={settings.lastPlaylist}
+          playlistUsed={settings.playlistUsed}
           busy={addBusy}
           onPick={pick}
           onClose={() => setAdding(null)}

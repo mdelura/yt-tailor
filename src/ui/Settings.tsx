@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
+import { byRecentUse } from '../api/playlists';
 import { fmtAge } from '../format';
 import { INITIAL_LOOKBACK_MS, parsePrefixes } from '../rules';
 import { parseSettings } from '../store/settings';
@@ -260,7 +261,7 @@ function Rules({ settings, channels, playlists, rulesBusy, onChange, onNeedPlayl
           <span class="pair">
             <select value={playlistId} onChange={(e) => setPlaylistId((e.target as HTMLSelectElement).value)} required>
               <option value="">{playlists ? 'Choose a playlist…' : 'Sign in to load playlists'}</option>
-              {(playlists ?? []).map((p) => (
+              {byRecentUse(playlists ?? [], settings.playlistUsed).map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.title}
                 </option>

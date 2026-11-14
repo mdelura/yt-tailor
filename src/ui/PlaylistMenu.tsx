@@ -1,21 +1,20 @@
-import type { Where } from '../api/playlists';
+import { byRecentUse, type Where } from '../api/playlists';
 import type { Playlist, Video } from '../types';
 
 interface Props {
   video: Video;
   /** null while loading */
   playlists: Playlist[] | null;
-  lastPlaylist?: string;
+  playlistUsed: Record<string, number>;
   busy: boolean;
   onPick: (p: Playlist, where: Where) => void;
   onClose: () => void;
 }
 
-export function PlaylistMenu({ video, playlists, lastPlaylist, busy, onPick, onClose }: Props) {
-  // Last used playlist first, so repeat adds are one tap.
-  const sorted = playlists
-    ? [...playlists].sort((a, b) => Number(b.id === lastPlaylist) - Number(a.id === lastPlaylist))
-    : null;
+export function PlaylistMenu({ video, playlists, playlistUsed, busy, onPick, onClose }: Props) {
+  // Most recently used first, so repeat adds are one tap.
+  const sorted = playlists ? byRecentUse(playlists, playlistUsed) : null;
+  const lastPlaylist = sorted?.[0] && playlistUsed[sorted[0].id] ? sorted[0].id : undefined;
   return (
     <div class="overlay" onClick={onClose}>
       <div class="sheet" role="dialog" aria-label="Add to playlist" onClick={(e) => e.stopPropagation()}>

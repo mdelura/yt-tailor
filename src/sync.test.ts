@@ -19,6 +19,7 @@ const rule = (id: string, extra: Partial<Rule> = {}): Rule => ({
 const settings = (extra: Partial<Settings> = {}): Settings => ({
   favourites: [],
   perChannel: 3,
+  playlistUsed: {},
   rules: [],
   updatedAt: 0,
   ...extra,
@@ -54,6 +55,15 @@ describe('mergeSettings', () => {
     expect(merged.rules.map((r) => r.id)).toEqual(['r1', 'r2']); // winner's rule list
     expect(merged.rules[0].handled.sort()).toEqual(['a', 'b', 'c']);
     expect(merged.rules[0].lastRun).toBe(9);
+  });
+
+  it('keeps the later use time of each playlist from either copy', () => {
+    const local = settings({ updatedAt: 20, playlistUsed: { A: 5, B: 50 } });
+    const remote = settings({ updatedAt: 10, playlistUsed: { A: 30, C: 40 } });
+    const merged = mergeSettings(local, remote);
+    expect(merged.playlistUsed).toEqual({ A: 30, B: 50, C: 40 });
+    expect(Object.keys(merged.playlistUsed)).toEqual(['B', 'C', 'A']); // most recent first
+    expect(canonical(merged)).toBe(canonical(mergeSettings(remote, local)));
   });
 });
 
