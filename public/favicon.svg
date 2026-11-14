@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <defs>
+    <clipPath id="body"><path d="M-3 33.5L29 -4.5L60 60Z"/></clipPath>
+    <clipPath id="corner"><path d="M-3 33.5L29 -4.5L-40 -40Z"/></clipPath>
+    <path id="play" d="M11 7L26.5 16L11 25Z" fill="#780014" stroke="#780014" stroke-width="1.5" stroke-linejoin="round"/>
+  </defs>
+  <rect width="32" height="32" rx="7" fill="#f6f5f2"/>
+  <g clip-path="url(#body)"><use href="#play"/></g>
+  <g transform="translate(-3 -2.4) rotate(-10 13 11)">
+    <g clip-path="url(#corner)"><use href="#play"/></g>
+  </g>
+</svg>
