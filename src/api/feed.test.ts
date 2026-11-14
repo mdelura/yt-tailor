@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Channel, Video } from '../types';
 import { chunk, favouriteGroups, keepSubscribed, mapPool, mergeVideos, parseDuration } from './feed';
-import { insertBody } from './playlists';
+import { byRecentUse, insertBody } from './playlists';
 import { addQuota, getQuota, pacificDay } from './quota';
 import { parseSettings } from '../store/settings';
 import { fmtAge, fmtDuration } from '../format';
@@ -131,12 +131,27 @@ describe('quota', () => {
 
 describe('parseSettings', () => {
   it('falls back to defaults on bad input', () => {
-    expect(parseSettings(null)).toEqual({ favourites: [], perChannel: 3, rules: [], updatedAt: 0 });
-    expect(parseSettings('{bad')).toEqual({ favourites: [], perChannel: 3, rules: [], updatedAt: 0 });
+    const defaults = { favourites: [], perChannel: 3, playlistUsed: {}, rules: [], updatedAt: 0 };
+    expect(parseSettings(null)).toEqual(defaults);
+    expect(parseSettings('{bad')).toEqual(defaults);
   });
   it('sanitises values', () => {
-    const s = parseSettings(JSON.stringify({ favourites: ['a', 'a', 5], perChannel: 99, lastPlaylist: 'PL' }));
-    expect(s).toEqual({ favourites: ['a'], perChannel: 10, lastPlaylist: 'PL', rules: [], updatedAt: 0 });
+    const s = parseSettings(
+      JSON.stringify({ favourites: ['a', 'a', 5], perChannel: 99, playlistUsed: { PL: 7, bad: 'x', neg: -1 } }),
+    );
+    expect(s).toEqual({ favourites: ['a'], perChannel: 10, playlistUsed: { PL: 7 }, rules: [], updatedAt: 0 });
+  });
+  it('carries over the last used playlist from older settings', () => {
+    expect(parseSettings(JSON.stringify({ lastPlaylist: 'PL' })).playlistUsed).toEqual({ PL: 1 });
+    expect(parseSettings(JSON.stringify({ lastPlaylist: 'PL', playlistUsed: { PL: 9 } })).playlistUsed).toEqual({ PL: 9 });
+  });
+});
+
+describe('byRecentUse', () => {
+  it('puts recently used playlists first and leaves the rest in their original order', () => {
+    const pl = ['a', 'b', 'c', 'd'].map((id) => ({ id, title: id, count: 0 }));
+    expect(byRecentUse(pl, { c: 10, d: 20 }).map((p) => p.id)).toEqual(['d', 'c', 'a', 'b']);
+    expect(byRecentUse(pl, {}).map((p) => p.id)).toEqual(['a', 'b', 'c', 'd']);
   });
 });
 

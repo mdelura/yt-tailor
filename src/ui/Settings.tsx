@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
+import { byRecentUse } from '../api/playlists';
 import { fmtAge } from '../format';
 import { INITIAL_LOOKBACK_MS, parsePrefixes } from '../rules';
 import { parseSettings } from '../store/settings';
@@ -61,7 +62,7 @@ export function Settings(props: Props) {
         </header>
 
         {tab === 'favourites' ? (
-          <Favourites settings={settings} channels={channels} onChange={onChange} />
+          <Favourites {...props} />
         ) : (
           <Rules {...props} />
         )}
@@ -91,8 +92,21 @@ export function Settings(props: Props) {
   );
 }
 
-function Favourites({ settings, channels, onChange }: Pick<Props, 'settings' | 'channels' | 'onChange'>) {
+function Favourites({ settings, channels, playlists, onChange, onNeedPlaylists }: Props) {
   const [filter, setFilter] = useState('');
+  const wl = settings.watchLater;
+
+  useEffect(() => {
+    if (!playlists) onNeedPlaylists();
+  }, []);
+
+  // Keep the saved choice selectable even before (or without) the playlist list.
+  const loaded = playlists ?? [];
+  const wlOptions = wl && !loaded.some((p) => p.id === wl.id) ? [{ id: wl.id, title: wl.title, count: 0 }, ...loaded] : loaded;
+  const setWatchLater = (id: string, where = wl?.where ?? 'top') => {
+    const p = wlOptions.find((x) => x.id === id);
+    onChange({ ...settings, watchLater: p ? { id: p.id, title: p.title, where } : undefined });
+  };
   const favs = new Set(settings.favourites);
 
   const toggle = (id: string) => {
@@ -120,6 +134,35 @@ function Favourites({ settings, channels, onChange }: Pick<Props, 'settings' | '
           }}
         />
       </label>
+
+      <div class="field">
+        <span>
+          Watch Later playlist <small>(clock icon)</small>
+        </span>
+        <span class="pair">
+          <select
+            aria-label="Watch Later playlist"
+            value={wl?.id ?? ''}
+            onChange={(e) => setWatchLater((e.target as HTMLSelectElement).value)}
+          >
+            <option value="">{playlists || wl ? 'Ask on first use' : 'Sign in to load playlists'}</option>
+            {wlOptions.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.title}
+              </option>
+            ))}
+          </select>
+          <select
+            aria-label="Where to add"
+            value={wl?.where ?? 'top'}
+            disabled={!wl}
+            onChange={(e) => wl && setWatchLater(wl.id, (e.target as HTMLSelectElement).value as 'top' | 'bottom')}
+          >
+            <option value="top">Top</option>
+            <option value="bottom">Bottom</option>
+          </select>
+        </span>
+      </div>
 
       <div class="field">
         <span>
@@ -260,7 +303,7 @@ function Rules({ settings, channels, playlists, rulesBusy, onChange, onNeedPlayl
           <span class="pair">
             <select value={playlistId} onChange={(e) => setPlaylistId((e.target as HTMLSelectElement).value)} required>
               <option value="">{playlists ? 'Choose a playlist…' : 'Sign in to load playlists'}</option>
-              {(playlists ?? []).map((p) => (
+              {byRecentUse(playlists ?? [], settings.playlistUsed).map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.title}
                 </option>

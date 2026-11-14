@@ -1,6 +1,7 @@
 // Settings sync between devices. The newer copy wins as a whole; rule bookkeeping is unioned
-// so a video one device already handled is never added again by another.
-import { parseSettings } from './store/settings';
+// so a video one device already handled is never added again by another, and playlist use
+// times are merged per playlist.
+import { parseSettings, tidyPlaylistUsed } from './store/settings';
 import type { Rule, Settings } from './types';
 
 const HANDLED_CAP = 500;
@@ -18,7 +19,10 @@ export function mergeSettings(local: Settings, remote: Settings | null): Setting
     const lastRun = Math.max(r.lastRun ?? 0, o.lastRun ?? 0) || undefined;
     return { ...r, handled: [...new Set([...o.handled, ...r.handled])].slice(-HANDLED_CAP), lastRun };
   });
-  return { ...winner, rules };
+  // Playlist use times are kept per playlist, whichever copy saw the later use.
+  const used = { ...loser.playlistUsed };
+  for (const [id, at] of Object.entries(winner.playlistUsed)) used[id] = Math.max(at, used[id] ?? 0);
+  return { ...winner, playlistUsed: tidyPlaylistUsed(used), rules };
 }
 
 export interface SyncIo {

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import type { FavouriteGroup } from '../api/feed';
 import type { Video } from '../types';
-import { VideoCard } from './VideoCard';
+import { VideoCard, type LaterState } from './VideoCard';
 
 const PAGE = 48;
 
@@ -9,10 +9,14 @@ interface Props {
   groups: FavouriteGroup[];
   videos: Video[];
   onAdd: (v: Video) => void;
+  laterTitle?: string;
+  later: Record<string, LaterState>;
+  onLater: (v: Video) => void;
   onOpenSettings: () => void;
 }
 
-export function Feed({ groups, videos, onAdd, onOpenSettings }: Props) {
+export function Feed({ groups, videos, onAdd, laterTitle, later, onLater, onOpenSettings }: Props) {
+  const laterProps = (v: Video) => ({ laterTitle, laterState: later[v.id], onLater });
   const [visible, setVisible] = useState(PAGE);
   const sentinel = useRef<HTMLDivElement>(null);
 
@@ -51,7 +55,7 @@ export function Feed({ groups, videos, onAdd, onOpenSettings }: Props) {
               </h3>
               <div class="grid">
                 {g.videos.map((v) => (
-                  <VideoCard key={v.id} video={v} compact onAdd={onAdd} />
+                  <VideoCard key={v.id} video={v} compact onAdd={onAdd} {...laterProps(v)} />
                 ))}
               </div>
             </div>
@@ -66,7 +70,7 @@ export function Feed({ groups, videos, onAdd, onOpenSettings }: Props) {
         ) : (
           <div class="grid">
             {videos.slice(0, visible).map((v) => (
-              <VideoCard key={v.id} video={v} onAdd={onAdd} />
+              <VideoCard key={v.id} video={v} onAdd={onAdd} {...laterProps(v)} />
             ))}
           </div>
         )}

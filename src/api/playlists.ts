@@ -16,6 +16,11 @@ export async function fetchPlaylists(): Promise<Playlist[]> {
   }));
 }
 
+/** Most recently used in YTailor first; playlists never used keep YouTube's order after them. */
+export function byRecentUse(playlists: Playlist[], used: Record<string, number>): Playlist[] {
+  return [...playlists].sort((a, b) => (used[b.id] ?? 0) - (used[a.id] ?? 0));
+}
+
 /** Request body for playlistItems.insert. Position 0 puts the video first; omitted appends. */
 export function insertBody(playlistId: string, videoId: string, where: Where) {
   return {
