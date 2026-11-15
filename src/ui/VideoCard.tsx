@@ -13,7 +13,12 @@ interface Props {
   onLater: (v: Video, where: Where) => void;
 }
 
-export type LaterState = 'busy' | 'done';
+export interface LaterState {
+  /** Where the video was last put in the Watch Later playlist. */
+  done?: Where;
+  /** Where it is being put right now. */
+  busy?: Where;
+}
 
 function hue(id: string): number {
   let h = 0;
@@ -36,20 +41,21 @@ export function VideoCard({ video: v, compact, onAdd, laterTitle, laterState, on
         {badge && <span class={`badge ${v.live !== 'none' ? 'badge-live' : ''}`}>{badge}</span>}
       </a>
       {/* A sibling of the thumbnail link, not a child: a button inside a link would also follow the link. */}
-      {laterState === 'done' ? (
-        <span class="later done" role="img" title={`Saved to ${later}`} aria-label={`Saved to ${later}`}>
-          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-            <path d="M5 12.5l4.5 4.5L19 7.5" />
-          </svg>
-        </span>
-      ) : (
-        <div class={`later ${laterState ?? ''}`} role="group" aria-label={`Save to ${later}`}>
-          {(['top', 'bottom'] as const).map((where) => (
+      <div class={`later ${laterState?.done || laterState?.busy ? 'active' : ''}`} role="group" aria-label={`Save to ${later}`}>
+        {(['top', 'bottom'] as const).map((where) => {
+          const on = laterState?.done === where;
+          const other = laterState?.done && !on;
+          const title = on
+            ? `At the ${where} of ${later}`
+            : `${other ? 'Move' : 'Save'} to the ${where} of ${later}`;
+          return (
             <button
               key={where}
-              title={`Save to the ${where} of ${later}`}
-              aria-label={`Save "${v.title}" to the ${where} of ${later}`}
-              disabled={!!laterState}
+              class={`${on ? 'on' : ''} ${laterState?.busy === where ? 'busy' : ''}`}
+              title={title}
+              aria-label={`${title}: "${v.title}"`}
+              aria-pressed={on}
+              disabled={on || !!laterState?.busy}
               onClick={() => onLater(v, where)}
             >
               {/* clock with an arrow: up for the top of the list, down for the bottom */}
@@ -58,9 +64,9 @@ export function VideoCard({ video: v, compact, onAdd, laterTitle, laterState, on
                 <path d={where === 'top' ? 'M19 22v-7M16 17.5l3-3 3 3' : 'M19 13v7M16 17.5l3 3 3-3'} />
               </svg>
             </button>
-          ))}
-        </div>
-      )}
+          );
+        })}
+      </div>
       <div class="card-foot">
         <div class="card-body">
           <a class="card-title" href={`https://www.youtube.com/watch?v=${v.id}`} target="_blank" rel="noopener">

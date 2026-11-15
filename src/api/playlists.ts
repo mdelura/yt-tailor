@@ -32,10 +32,20 @@ export function insertBody(playlistId: string, videoId: string, where: Where) {
   };
 }
 
+/** 1 quota unit. The playlist entry id of the video, or null when it is not in the playlist. */
+export async function findInPlaylist(playlistId: string, videoId: string): Promise<string | null> {
+  const page = await yt<Page<{ id: string }>>('playlistItems', { part: 'id', playlistId, videoId, maxResults: 1 });
+  return page.items?.[0]?.id ?? null;
+}
+
 /** 1 quota unit. Used by rules so a video already in the playlist is not added again. */
 export async function isInPlaylist(playlistId: string, videoId: string): Promise<boolean> {
-  const page = await yt<Page<unknown>>('playlistItems', { part: 'id', playlistId, videoId, maxResults: 1 });
-  return (page.items ?? []).length > 0;
+  return (await findInPlaylist(playlistId, videoId)) !== null;
+}
+
+/** 50 quota units. `itemId` is the playlist entry id, not the video id. */
+export async function removeFromPlaylist(itemId: string): Promise<void> {
+  await yt('playlistItems', { id: itemId }, { method: 'DELETE', cost: 50 });
 }
 
 export async function addToPlaylist(playlistId: string, videoId: string, where: Where): Promise<void> {

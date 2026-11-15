@@ -1,7 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { AuthError, describeError } from './api/client';
 import { favouriteGroups, fetchChannelVideos, fetchSubscriptions, keepSubscribed, mergeVideos } from './api/feed';
-import { addToPlaylist, fetchPlaylists, isInPlaylist, type Where } from './api/playlists';
+import {
+  addToPlaylist,
+  fetchPlaylists,
+  findInPlaylist,
+  isInPlaylist,
+  removeFromPlaylist,
+  type Where,
+} from './api/playlists';
 import { runRules, summarise } from './rules';
 import { syncSettings } from './sync';
 import { DAILY_QUOTA, getQuota } from './api/quota';
@@ -340,20 +347,28 @@ export function App() {
     if (!(await renewIfExpired())) return;
     if (!getToken() && !IS_DEMO) return notify('Sign in to add videos to playlists.');
     if (!target) return openAdd(v, true);
-    setLater((m) => ({ ...m, [v.id]: 'busy' }));
+    const before = later[v.id]?.done;
+    let removed = false;
+    setLater((m) => ({ ...m, [v.id]: { done: m[v.id]?.done, busy: where } }));
     try {
-      // 1 unit, and saves both the 50-unit insert and a duplicate entry.
-      const dup = !IS_DEMO && (await isInPlaylist(target.id, v.id));
-      if (!dup && !IS_DEMO) await addToPlaylist(target.id, v.id, where);
-      setLater((m) => ({ ...m, [v.id]: 'done' }));
+      // Already there (from the other button, or added on YouTube): take the old entry out first,
+      // so tapping the other button moves the video instead of listing it twice.
+      const existing = IS_DEMO ? null : await findInPlaylist(target.id, v.id);
+      if (existing) {
+        await removeFromPlaylist(existing);
+        removed = true;
+      }
+      if (!IS_DEMO) await addToPlaylist(target.id, v.id, where);
+      setLater((m) => ({ ...m, [v.id]: { done: where } }));
+      const moved = existing || (IS_DEMO && before);
       notify(
-        dup
-          ? `Already in “${target.title}”`
-          : `Added to the ${where} of “${target.title}”${IS_DEMO ? ' (demo, nothing was changed)' : ''}`,
+        `${moved ? 'Moved' : 'Added'} to the ${where} of “${target.title}”${IS_DEMO ? ' (demo, nothing was changed)' : ''}`,
       );
     } catch (e) {
-      setLater(({ [v.id]: _, ...rest }) => rest);
+      // If the old entry is already gone, the video is no longer in the playlist at all.
+      setLater((m) => ({ ...m, [v.id]: { done: removed ? undefined : before } }));
       fail(e);
+      if (removed) notify(`Removed from “${target.title}” but could not add it back: ${describeError(e)}`);
     } finally {
       setQuota(getQuota());
     }

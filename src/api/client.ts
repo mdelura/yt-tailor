@@ -25,7 +25,7 @@ export interface Page<T> {
 }
 
 interface Options {
-  method?: 'GET' | 'POST';
+  method?: 'GET' | 'POST' | 'DELETE';
   body?: unknown;
   /** Quota units this call costs (1 for list calls, 50 for inserts). */
   cost?: number;
@@ -65,6 +65,7 @@ export async function yt<T>(
     const message: string = err?.error?.message ?? `YouTube API error ${res.status}`;
     throw new ApiError(res.status, reason, message);
   }
+  if (res.status === 204) return undefined as T;
   return (await res.json()) as T;
 }
 

@@ -165,13 +165,13 @@ h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.08em; color: 
   transition: background-color 0.12s, transform 0.08s;
 }
 .later svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-.card:hover .later, .later:focus-within, .later.busy, .later.done { opacity: 1; }
+.card:hover .later, .later:focus-within, .later.active { opacity: 1; }
 @media (hover: none) { .later { opacity: 1; } }
 .later button:disabled { opacity: 1; cursor: default; }
+.later button.on { background: var(--accent); }
 .later button:hover:not(:disabled) { background: var(--accent); }
 .later button:active:not(:disabled) { transform: scale(0.9); }
-.later.busy svg { animation: later-pulse 0.8s ease-in-out infinite alternate; }
-.later.done { display: grid; place-items: center; width: 32px; height: 32px; background: var(--accent); }
+.later button.busy svg { animation: later-pulse 0.8s ease-in-out infinite alternate; }
 @keyframes later-pulse { to { opacity: 0.35; } }
 .sentinel { height: 1px; }
 
