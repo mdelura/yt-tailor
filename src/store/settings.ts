@@ -48,11 +48,7 @@ function parseRule(r: any): Rule | null {
 
 function parseWatchLater(w: any): WatchLater | undefined {
   if (!w || typeof w !== 'object' || typeof w.id !== 'string' || !w.id) return undefined;
-  return {
-    id: w.id,
-    title: typeof w.title === 'string' ? w.title : w.id,
-    where: w.where === 'bottom' ? 'bottom' : 'top',
-  };
+  return { id: w.id, title: typeof w.title === 'string' ? w.title : w.id };
 }
 
 /** Validates untrusted JSON (localStorage or an imported file) into Settings. */

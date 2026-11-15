@@ -11,7 +11,7 @@ interface Props {
   onAdd: (v: Video) => void;
   laterTitle?: string;
   later: Record<string, LaterState>;
-  onLater: (v: Video) => void;
+  onLater: (v: Video, where: 'top' | 'bottom') => void;
   onOpenSettings: () => void;
 }
 

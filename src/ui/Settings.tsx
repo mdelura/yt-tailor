@@ -103,9 +103,9 @@ function Favourites({ settings, channels, playlists, onChange, onNeedPlaylists }
   // Keep the saved choice selectable even before (or without) the playlist list.
   const loaded = playlists ?? [];
   const wlOptions = wl && !loaded.some((p) => p.id === wl.id) ? [{ id: wl.id, title: wl.title, count: 0 }, ...loaded] : loaded;
-  const setWatchLater = (id: string, where = wl?.where ?? 'top') => {
+  const setWatchLater = (id: string) => {
     const p = wlOptions.find((x) => x.id === id);
-    onChange({ ...settings, watchLater: p ? { id: p.id, title: p.title, where } : undefined });
+    onChange({ ...settings, watchLater: p ? { id: p.id, title: p.title } : undefined });
   };
   const favs = new Set(settings.favourites);
 
@@ -137,31 +137,21 @@ function Favourites({ settings, channels, playlists, onChange, onNeedPlaylists }
 
       <div class="field">
         <span>
-          Watch Later playlist <small>(clock icon)</small>
+          Watch Later playlist <small>(clock icons)</small>
         </span>
-        <span class="pair">
-          <select
-            aria-label="Watch Later playlist"
-            value={wl?.id ?? ''}
-            onChange={(e) => setWatchLater((e.target as HTMLSelectElement).value)}
-          >
-            <option value="">{playlists || wl ? 'Ask on first use' : 'Sign in to load playlists'}</option>
-            {wlOptions.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.title}
-              </option>
-            ))}
-          </select>
-          <select
-            aria-label="Where to add"
-            value={wl?.where ?? 'top'}
-            disabled={!wl}
-            onChange={(e) => wl && setWatchLater(wl.id, (e.target as HTMLSelectElement).value as 'top' | 'bottom')}
-          >
-            <option value="top">Top</option>
-            <option value="bottom">Bottom</option>
-          </select>
-        </span>
+        <select
+          class="wl"
+          aria-label="Watch Later playlist"
+          value={wl?.id ?? ''}
+          onChange={(e) => setWatchLater((e.target as HTMLSelectElement).value)}
+        >
+          <option value="">{playlists || wl ? 'Ask on first use' : 'Sign in to load playlists'}</option>
+          {wlOptions.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.title}
+            </option>
+          ))}
+        </select>
       </div>
 
       <div class="field">

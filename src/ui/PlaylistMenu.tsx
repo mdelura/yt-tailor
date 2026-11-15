@@ -54,7 +54,7 @@ export function PlaylistMenu({ video, playlists, playlistUsed, busy, forLater, o
         )}
         <p class="note">
           {forLater
-            ? 'YouTube closes its own Watch Later to third-party apps, so one of your playlists stands in for it. From now on the clock icon adds to it in one tap. You can change it in Settings.'
+            ? 'YouTube closes its own Watch Later to third-party apps, so one of your playlists stands in for it. From now on the clock icons add to its top or bottom in one tap. You can change it in Settings.'
             : 'Watch Later is not available to third-party apps. Each add uses 50 quota units.'}
         </p>
       </div>

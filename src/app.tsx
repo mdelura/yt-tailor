@@ -336,7 +336,7 @@ export function App() {
   }
 
   /** One-tap add to the playlist standing in for Watch Later; the first tap asks which playlist that is. */
-  async function saveLater(v: Video, target: WatchLater | undefined = live.current.settings.watchLater) {
+  async function saveLater(v: Video, where: Where, target: WatchLater | undefined = live.current.settings.watchLater) {
     if (!(await renewIfExpired())) return;
     if (!getToken() && !IS_DEMO) return notify('Sign in to add videos to playlists.');
     if (!target) return openAdd(v, true);
@@ -344,12 +344,12 @@ export function App() {
     try {
       // 1 unit, and saves both the 50-unit insert and a duplicate entry.
       const dup = !IS_DEMO && (await isInPlaylist(target.id, v.id));
-      if (!dup && !IS_DEMO) await addToPlaylist(target.id, v.id, target.where);
+      if (!dup && !IS_DEMO) await addToPlaylist(target.id, v.id, where);
       setLater((m) => ({ ...m, [v.id]: 'done' }));
       notify(
         dup
           ? `Already in “${target.title}”`
-          : `Added to “${target.title}”${IS_DEMO ? ' (demo, nothing was changed)' : ''}`,
+          : `Added to the ${where} of “${target.title}”${IS_DEMO ? ' (demo, nothing was changed)' : ''}`,
       );
     } catch (e) {
       setLater(({ [v.id]: _, ...rest }) => rest);
@@ -386,10 +386,10 @@ export function App() {
   async function pick(p: Playlist, where: Where) {
     if (!adding) return;
     if (choosing) {
-      const target: WatchLater = { id: p.id, title: p.title, where };
+      const target: WatchLater = { id: p.id, title: p.title };
       updateSettings({ ...live.current.settings, watchLater: target });
       setAdding(null);
-      return saveLater(adding, target);
+      return saveLater(adding, where, target);
     }
     setAddBusy(true);
     try {
@@ -483,7 +483,7 @@ export function App() {
         onAdd={(v) => openAdd(v)}
         laterTitle={settings.watchLater?.title}
         later={later}
-        onLater={(v) => saveLater(v)}
+        onLater={(v, where) => saveLater(v, where)}
         onOpenSettings={() => setShowSettings(true)}
       />
 

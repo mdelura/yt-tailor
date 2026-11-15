@@ -1,4 +1,5 @@
 import { fmtAge, fmtDuration } from '../format';
+import type { Where } from '../api/playlists';
 import type { Video } from '../types';
 
 interface Props {
@@ -9,7 +10,7 @@ interface Props {
   /** Name of the playlist standing in for Watch Later, once one is chosen. */
   laterTitle?: string;
   laterState?: LaterState;
-  onLater: (v: Video) => void;
+  onLater: (v: Video, where: Where) => void;
 }
 
 export type LaterState = 'busy' | 'done';
@@ -21,7 +22,7 @@ function hue(id: string): number {
 }
 
 export function VideoCard({ video: v, compact, onAdd, laterTitle, laterState, onLater }: Props) {
-  const laterLabel = `${laterState === 'done' ? 'Saved' : 'Save'} to ${laterTitle ?? 'Watch Later'}`;
+  const later = laterTitle ?? 'Watch Later';
   const badge =
     v.live === 'live' ? 'LIVE' : v.live === 'upcoming' ? 'Upcoming' : fmtDuration(v.durationSec);
   return (
@@ -35,21 +36,31 @@ export function VideoCard({ video: v, compact, onAdd, laterTitle, laterState, on
         {badge && <span class={`badge ${v.live !== 'none' ? 'badge-live' : ''}`}>{badge}</span>}
       </a>
       {/* A sibling of the thumbnail link, not a child: a button inside a link would also follow the link. */}
-      <button
-        class={`later ${laterState ?? ''}`}
-        title={laterLabel}
-        aria-label={`${laterLabel}: "${v.title}"`}
-        disabled={!!laterState}
-        onClick={() => onLater(v)}
-      >
-        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-          {laterState === 'done' ? (
+      {laterState === 'done' ? (
+        <span class="later done" role="img" title={`Saved to ${later}`} aria-label={`Saved to ${later}`}>
+          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
             <path d="M5 12.5l4.5 4.5L19 7.5" />
-          ) : (
-            <path d="M12 3a9 9 0 1 0 0 18a9 9 0 0 0 0-18zM12 7.5V12l3 2" />
-          )}
-        </svg>
-      </button>
+          </svg>
+        </span>
+      ) : (
+        <div class={`later ${laterState ?? ''}`} role="group" aria-label={`Save to ${later}`}>
+          {(['top', 'bottom'] as const).map((where) => (
+            <button
+              key={where}
+              title={`Save to the ${where} of ${later}`}
+              aria-label={`Save "${v.title}" to the ${where} of ${later}`}
+              disabled={!!laterState}
+              onClick={() => onLater(v, where)}
+            >
+              {/* clock with an arrow: up for the top of the list, down for the bottom */}
+              <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                <path d="M19.5 10.5A8 8 0 1 0 12 20M11 8v4.5l2.5 1.5" />
+                <path d={where === 'top' ? 'M19 22v-7M16 17.5l3-3 3 3' : 'M19 13v7M16 17.5l3 3 3-3'} />
+              </svg>
+            </button>
+          ))}
+        </div>
+      )}
       <div class="card-foot">
         <div class="card-body">
           <a class="card-title" href={`https://www.youtube.com/watch?v=${v.id}`} target="_blank" rel="noopener">

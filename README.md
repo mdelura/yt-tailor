@@ -1,6 +1,6 @@
 # YTailor
 
-A distraction-free YouTube subscriptions page: the last *N* videos from your favourite channels on top, then every recent video from your subscriptions. Shorts are hidden, live streams are kept. Each video has a **+** button to add it to the top or bottom of one of your playlists, and a clock icon on its thumbnail that saves it to your Watch Later playlist in one tap.
+A distraction-free YouTube subscriptions page: the last *N* videos from your favourite channels on top, then every recent video from your subscriptions. Shorts are hidden, live streams are kept. Each video has a **+** button to add it to the top or bottom of one of your playlists, and two clock icons on its thumbnail that save it to the top or bottom of your Watch Later playlist in one tap.
 
 Static site, no backend. It uses the official YouTube Data API with your own Google sign-in.
 
@@ -65,7 +65,7 @@ Favourites, rules and the per-channel count are saved to a hidden app-data folde
 
 ## Limits worth knowing
 
-- **YouTube's own Watch Later cannot be used.** YouTube blocks it for all third-party apps. The clock icon therefore adds to a normal playlist of your choice: it asks which one on first use, and **Settings → Favourites** changes it. A video already in that playlist is not added twice.
+- **YouTube's own Watch Later cannot be used.** YouTube blocks it for all third-party apps. The clock icons therefore add to a normal playlist of your choice: it asks which one on first use, and **Settings → Favourites** changes it. A video already in that playlist is not added twice.
 - **Quota:** 10,000 units a day. A full refresh costs about 2 units per subscribed channel; each playlist add costs 50. The footer shows today's estimate. The feed is cached and auto-refreshes at most every 30 minutes.
 - **Adding to the top** only works on playlists with manual ordering (the default).
 - **Sign-in lasts about an hour**: a browser-only app gets no refresh token from Google. When it runs out, a banner offers *Continue*, and adding a video or opening playlists renews it on the spot. The app remembers your account's email as a login hint, so the Google popup skips the account chooser and usually closes by itself. The cached feed stays visible meanwhile.

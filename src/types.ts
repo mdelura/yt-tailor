@@ -47,7 +47,6 @@ export interface Rule {
 export interface WatchLater {
   id: string;
   title: string;
-  where: 'top' | 'bottom';
 }
 
 export interface Settings {
