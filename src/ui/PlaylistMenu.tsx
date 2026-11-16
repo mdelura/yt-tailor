@@ -42,11 +42,11 @@ export function PlaylistMenu({ video, playlists, playlistUsed, busy, forLater, o
                   {p.title}
                   <small>{p.count} videos{p.id === lastPlaylist ? ' · last used' : ''}</small>
                 </span>
-                <button disabled={busy} onClick={() => onPick(p, 'top')}>
-                  ↑ Top
-                </button>
                 <button disabled={busy} onClick={() => onPick(p, 'bottom')}>
                   ↓ Bottom
+                </button>
+                <button disabled={busy} onClick={() => onPick(p, 'top')}>
+                  ↑ Top
                 </button>
               </li>
             ))}
