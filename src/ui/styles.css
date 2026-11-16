@@ -152,7 +152,7 @@ h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.08em; color: 
 /* Watch Later: over the thumbnail's top-right corner. Shown on hover or focus; always on touch screens. */
 .later {
   position: absolute; top: 6px; right: 6px; z-index: 1;
-  display: flex;
+  display: flex; flex-direction: column;
   border-radius: 8px;
   background: rgba(0, 0, 0, 0.8); color: #fff;
   opacity: 0;

@@ -42,7 +42,7 @@ export function VideoCard({ video: v, compact, onAdd, laterTitle, laterState, on
       </a>
       {/* A sibling of the thumbnail link, not a child: a button inside a link would also follow the link. */}
       <div class={`later ${laterState?.done || laterState?.busy ? 'active' : ''}`} role="group" aria-label={`Save to ${later}`}>
-        {(['top', 'bottom'] as const).map((where) => {
+        {(['bottom', 'top'] as const).map((where) => {
           const on = laterState?.done === where;
           const other = laterState?.done && !on;
           const title = on
