@@ -16,9 +16,9 @@ interface Props {
 }
 
 export function Feed({ groups, videos: all, onAdd, laterTitle, later, onLater, onOpenSettings }: Props) {
-  // Favourite channels already have their own section above.
-  const favIds = new Set(groups.map((g) => g.channel.id));
-  const videos = all.filter((v) => !favIds.has(v.channelId));
+  // Videos already shown in Favourites above; older ones from those channels stay here.
+  const shown = new Set(groups.flatMap((g) => g.videos.map((v) => v.id)));
+  const videos = all.filter((v) => !shown.has(v.id));
   const laterProps = (v: Video) => ({ laterTitle, laterState: later[v.id], onLater });
   const [visible, setVisible] = useState(PAGE);
   const sentinel = useRef<HTMLDivElement>(null);
@@ -72,7 +72,7 @@ export function Feed({ groups, videos: all, onAdd, laterTitle, later, onLater, o
           <p class="empty">
             {all.length === 0
               ? 'Nothing here yet. Sign in and refresh to load your subscriptions.'
-              : 'Every recent video is from a favourite channel.'}
+              : 'Every recent video is already shown in Favourites.'}
           </p>
         ) : (
           <div class="grid">
