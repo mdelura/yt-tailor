@@ -15,7 +15,10 @@ interface Props {
   onOpenSettings: () => void;
 }
 
-export function Feed({ groups, videos, onAdd, laterTitle, later, onLater, onOpenSettings }: Props) {
+export function Feed({ groups, videos: all, onAdd, laterTitle, later, onLater, onOpenSettings }: Props) {
+  // Favourite channels already have their own section above.
+  const favIds = new Set(groups.map((g) => g.channel.id));
+  const videos = all.filter((v) => !favIds.has(v.channelId));
   const laterProps = (v: Video) => ({ laterTitle, laterState: later[v.id], onLater });
   const [visible, setVisible] = useState(PAGE);
   const sentinel = useRef<HTMLDivElement>(null);
@@ -64,9 +67,13 @@ export function Feed({ groups, videos, onAdd, laterTitle, later, onLater, onOpen
       </section>
 
       <section>
-        <h2>All recent</h2>
+        <h2>Other</h2>
         {videos.length === 0 ? (
-          <p class="empty">Nothing here yet. Sign in and refresh to load your subscriptions.</p>
+          <p class="empty">
+            {all.length === 0
+              ? 'Nothing here yet. Sign in and refresh to load your subscriptions.'
+              : 'Every recent video is from a favourite channel.'}
+          </p>
         ) : (
           <div class="grid">
             {videos.slice(0, visible).map((v) => (
