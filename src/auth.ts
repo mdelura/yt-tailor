@@ -1,7 +1,7 @@
 // Google Identity Services token flow (browser only, no backend, no refresh token).
 // The access token lives for about an hour; after that the user taps "Sign in" again.
 // It is kept in localStorage so every tab and a browser restart within that hour stay signed in.
-// The account's email is remembered as a login hint, so signing in again skips the account
+// The account's ID is remembered as a login hint, so signing in again skips the account
 // chooser and the Google popup usually closes by itself.
 
 declare const google: any;
@@ -13,7 +13,7 @@ const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.appdata';
 const EMAIL_SCOPE = 'openid email';
 const SCOPE = `${YOUTUBE_SCOPE} ${DRIVE_SCOPE} ${EMAIL_SCOPE}`;
 const KEY = 'tailor.token';
-/** Email of the account last signed in; present until an explicit sign-out. */
+/** Google account ID (or, from older versions, email) of the last account; kept until sign-out. */
 const HINT_KEY = 'tailor.hint';
 
 export const CLIENT_ID: string = import.meta.env.VITE_GOOGLE_CLIENT_ID ?? '';
@@ -69,8 +69,11 @@ async function rememberAccount(token: string): Promise<void> {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (!res.ok) return;
-    const { email } = (await res.json()) as { email?: string };
-    if (email) localStorage.setItem(HINT_KEY, email);
+    // The account ID (sub) is preferred: for a YouTube Brand Account the email is a
+    // pseudo-address (…@pages.plusgoogle.com) that the account chooser may not match.
+    const { sub, email } = (await res.json()) as { sub?: string; email?: string };
+    const id = sub || email;
+    if (id) localStorage.setItem(HINT_KEY, id);
   } catch {
     // Only a convenience for the next sign-in.
   }
@@ -103,7 +106,8 @@ export async function signIn(): Promise<string> {
       client_id: CLIENT_ID,
       scope: SCOPE,
       // Same account as last time: no account chooser, so the popup usually closes by itself.
-      login_hint: hint().includes('@') ? hint() : undefined,
+      // The hint is the account ID (or an email saved by older versions); '-' means unknown.
+      login_hint: hint() && hint() !== '-' ? hint() : undefined,
       callback: (resp: any) => {
         if (resp.error || !resp.access_token) {
           return reject(new Error(resp.error_description || resp.error || 'Sign-in failed'));
