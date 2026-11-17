@@ -6,14 +6,13 @@ interface Props {
   /** null while loading */
   playlists: Playlist[] | null;
   playlistUsed: Record<string, number>;
-  busy: boolean;
   /** Choosing the playlist that stands in for Watch Later, rather than a one-off add. */
   forLater?: boolean;
   onPick: (p: Playlist, where: Where) => void;
   onClose: () => void;
 }
 
-export function PlaylistMenu({ video, playlists, playlistUsed, busy, forLater, onPick, onClose }: Props) {
+export function PlaylistMenu({ video, playlists, playlistUsed, forLater, onPick, onClose }: Props) {
   // Most recently used first, so repeat adds are one tap.
   const sorted = playlists ? byRecentUse(playlists, playlistUsed) : null;
   const lastPlaylist = sorted?.[0] && playlistUsed[sorted[0].id] ? sorted[0].id : undefined;
@@ -42,10 +41,10 @@ export function PlaylistMenu({ video, playlists, playlistUsed, busy, forLater, o
                   {p.title}
                   <small>{p.count} videos{p.id === lastPlaylist ? ' · last used' : ''}</small>
                 </span>
-                <button disabled={busy} onClick={() => onPick(p, 'bottom')}>
+                <button onClick={() => onPick(p, 'bottom')}>
                   ↓ Bottom
                 </button>
-                <button disabled={busy} onClick={() => onPick(p, 'top')}>
+                <button onClick={() => onPick(p, 'top')}>
                   ↑ Top
                 </button>
               </li>

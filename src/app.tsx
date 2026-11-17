@@ -48,7 +48,6 @@ export function App() {
   const [progress, setProgress] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [adding, setAdding] = useState<Video | null>(null);
-  const [addBusy, setAddBusy] = useState(false);
   /** The playlist dialog is open to choose the Watch Later stand-in, not for a one-off add. */
   const [choosing, setChoosing] = useState(false);
   const [later, setLater] = useState<Record<string, LaterState>>({});
@@ -406,17 +405,16 @@ export function App() {
       setAdding(null);
       return saveLater(adding, where, target);
     }
-    setAddBusy(true);
+    // Optimistic: close the sheet as soon as the request starts; a failure still shows up as a notice.
+    const video = adding;
+    setAdding(null);
+    markPlaylistUsed(p.id);
     try {
-      if (!IS_DEMO) await addToPlaylist(p.id, adding.id, where);
-      markPlaylistUsed(p.id);
+      if (!IS_DEMO) await addToPlaylist(p.id, video.id, where);
       notify(`Added to the ${where} of “${p.title}”${IS_DEMO ? ' (demo, nothing was changed)' : ''}`);
-      setAdding(null);
     } catch (e) {
       fail(e);
-      if (e instanceof AuthError) setAdding(null);
     } finally {
-      setAddBusy(false);
       setQuota(getQuota());
     }
   }
@@ -517,7 +515,6 @@ export function App() {
           video={adding}
           playlists={playlists}
           playlistUsed={settings.playlistUsed}
-          busy={addBusy}
           forLater={choosing}
           onPick={pick}
           onClose={() => setAdding(null)}
