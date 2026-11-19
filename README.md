@@ -25,6 +25,10 @@ Open <http://localhost:5180/?demo> for sample data.
 5. **Clients → Create client**: type **Web application**. Under **Authorised JavaScript origins** add:
    - `http://localhost:5180`
    - your hosted origin, e.g. `https://<user>.github.io` (origin only, no path)
+
+   Under **Authorised redirect URIs** add the full app addresses, with the trailing slash. They let an expired sign-in renew itself when you open the app, without a click:
+   - `http://localhost:5180/`
+   - your hosted app, e.g. `https://<user>.github.io/yt-tailor/`
 6. Copy the client ID into `.env`:
 
    ```

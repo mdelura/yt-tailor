@@ -1,5 +1,6 @@
 // Google Identity Services token flow (browser only, no backend, no refresh token).
-// The access token lives for about an hour; after that the user taps "Sign in" again.
+// The access token lives for about an hour; after that it is renewed by a silent redirect
+// on the next page load (see renewOnLoad), or the user taps "Continue".
 // It is kept in localStorage so every tab and a browser restart within that hour stay signed in.
 // The account's ID is remembered as a login hint, so signing in again skips the account
 // chooser and the Google popup usually closes by itself.
@@ -79,6 +80,78 @@ async function rememberAccount(token: string): Promise<void> {
   }
 }
 
+function saveToken(token: string, expiresIn: unknown, scope: unknown): string {
+  const fresh: StoredToken = {
+    token,
+    expiresAt: Date.now() + Number(expiresIn ?? 3600) * 1000,
+    scope: typeof scope === 'string' ? scope : '',
+  };
+  localStorage.setItem(KEY, JSON.stringify(fresh));
+  // Marks the session as one to renew even if the account lookup fails.
+  if (!hint()) localStorage.setItem(HINT_KEY, '-');
+  void rememberAccount(token);
+  return token;
+}
+
+// Silent renewal: a full-page redirect to Google with prompt=none. Unlike the popup it needs
+// no click, so it can run on page load. Google sends the browser straight back with a new
+// token when the account is still signed in and has already granted access, or with an error
+// (then the "Continue" banner is shown as before). The redirect URI has to be listed under
+// "Authorised redirect URIs" of the OAuth client.
+
+/** CSRF check for the redirect round trip; lives only in this tab. */
+const STATE_KEY = 'tailor.renewState';
+/** When silent renewal was last tried; stops a redirect loop when Google says no. */
+const ATTEMPT_KEY = 'tailor.renewAt';
+const RETRY_AFTER_MS = 15 * 60_000;
+
+/** This page without query, hash or a trailing index.html, as registered with Google. */
+function redirectUri(): string {
+  return location.origin + location.pathname.replace(/index\.html$/, '');
+}
+
+/**
+ * Call once at startup, before rendering. Picks up a token Google sent back, or, when the
+ * previous sign-in has run out, leaves for Google to renew it. Returns true when leaving.
+ */
+export function renewOnLoad(): boolean {
+  try {
+    const back = new URLSearchParams(location.hash.slice(1));
+    if (back.has('state') && (back.has('access_token') || back.has('error'))) {
+      const expected = sessionStorage.getItem(STATE_KEY);
+      sessionStorage.removeItem(STATE_KEY);
+      // Drop the token from the address bar and history.
+      history.replaceState(null, '', location.pathname + location.search);
+      const token = back.get('access_token');
+      if (token && expected && back.get('state') === expected) {
+        saveToken(token, back.get('expires_in'), back.get('scope'));
+      }
+      return false;
+    }
+
+    if (!CLIENT_ID || !sessionExpired()) return false;
+    if (Date.now() - Number(localStorage.getItem(ATTEMPT_KEY) ?? 0) < RETRY_AFTER_MS) return false;
+
+    const state = crypto.randomUUID();
+    sessionStorage.setItem(STATE_KEY, state);
+    localStorage.setItem(ATTEMPT_KEY, String(Date.now()));
+    const params = new URLSearchParams({
+      client_id: CLIENT_ID,
+      redirect_uri: redirectUri(),
+      response_type: 'token',
+      scope: SCOPE,
+      prompt: 'none',
+      state,
+    });
+    if (hint() !== '-') params.set('login_hint', hint());
+    location.replace(`https://accounts.google.com/o/oauth2/v2/auth?${params}`);
+    return true;
+  } catch {
+    // Storage blocked or similar: fall back to the "Continue" banner.
+    return false;
+  }
+}
+
 export function clearToken(): void {
   localStorage.removeItem(KEY);
 }
@@ -112,16 +185,7 @@ export async function signIn(): Promise<string> {
         if (resp.error || !resp.access_token) {
           return reject(new Error(resp.error_description || resp.error || 'Sign-in failed'));
         }
-        const fresh: StoredToken = {
-          token: resp.access_token,
-          expiresAt: Date.now() + Number(resp.expires_in ?? 3600) * 1000,
-          scope: typeof resp.scope === 'string' ? resp.scope : '',
-        };
-        localStorage.setItem(KEY, JSON.stringify(fresh));
-        // Marks the session as one to renew even if the email lookup fails.
-        if (!hint()) localStorage.setItem(HINT_KEY, '-');
-        void rememberAccount(fresh.token);
-        resolve(fresh.token);
+        resolve(saveToken(resp.access_token, resp.expires_in, resp.scope));
       },
       error_callback: (err: any) => reject(new Error(err?.message || 'Sign-in was cancelled')),
     });
