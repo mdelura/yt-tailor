@@ -246,11 +246,17 @@ export function App() {
       let done = 0;
       const onProgress = () => setProgress(`Loading channels ${++done} / ${chans.length}`);
 
-      let merged = keepSubscribed(live.current.videos, chans);
-      for (const part of [first, rest]) {
-        if (part.length === 0) continue;
-        merged = mergeVideos(merged, await fetchChannelVideos(part, onProgress));
+      // Merging with nothing still drops videos past the 30-day window.
+      let merged = mergeVideos(keepSubscribed(live.current.videos, chans), []);
+      setVideos(merged);
+      const known = new Map(merged.map((v) => [v.id, v]));
+      // Each videos.list batch goes on screen as soon as it returns.
+      const show = (batch: Video[]) => {
+        merged = mergeVideos(merged, batch);
         setVideos(merged);
+      };
+      for (const part of [first, rest]) {
+        if (part.length > 0) await fetchChannelVideos(part, known, show, onProgress);
       }
       live.current.videos = merged;
       await cacheSet('feed', merged);

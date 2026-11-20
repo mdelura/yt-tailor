@@ -4,7 +4,11 @@ import { ApiError, yt, ytAll, type Page } from './client';
 export const MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000; // API policy: do not keep data longer than 30 days
 const VIDEOS_PER_CHANNEL = 10;
 const STREAMS_PER_CHANNEL = 5;
-const CONCURRENCY = 6;
+// googleapis.com speaks HTTP/2, so the browser's 6-connections-per-host limit does not apply.
+// Each channel makes two playlist calls at once, so this is about 40 requests in flight.
+const CONCURRENCY = 20;
+/** videos.list accepts at most 50 ids per call. */
+const DETAILS_BATCH = 50;
 
 // ---------- pure helpers (unit tested) ----------
 
@@ -77,6 +81,29 @@ export function chunk<T>(items: T[], size: number): T[][] {
   return out;
 }
 
+export interface PlaylistEntry {
+  id: string;
+  /** contentDetails.videoPublishedAt; missing for private or deleted videos. */
+  publishedAt?: string;
+}
+
+/**
+ * Whether a playlist entry needs a videos.list call: it is new, or cached but still live or upcoming.
+ * New uploads older than the 30-day window are skipped since the merge would drop them anyway.
+ * Streams are never skipped by age: their feed date is the stream start, not the publish time.
+ */
+export function needsDetails(
+  entry: PlaylistEntry,
+  known: ReadonlyMap<string, Video>,
+  isStream: boolean,
+  now: number = Date.now(),
+): boolean {
+  const cached = known.get(entry.id);
+  if (cached) return cached.live !== 'none';
+  if (!isStream && entry.publishedAt && now - Date.parse(entry.publishedAt) > MAX_AGE_MS) return false;
+  return true;
+}
+
 // ---------- API calls ----------
 
 export async function fetchSubscriptions(): Promise<Channel[]> {
@@ -97,14 +124,17 @@ export async function fetchSubscriptions(): Promise<Channel[]> {
  * Video ids from one of a channel's auto-generated playlists.
  * Prefix UULF = long-form uploads (no Shorts), UULV = live streams. A channel with none returns 404.
  */
-async function playlistVideoIds(prefix: string, channelId: string, max: number): Promise<string[]> {
+async function playlistEntries(prefix: string, channelId: string, max: number): Promise<PlaylistEntry[]> {
   try {
     const page = await yt<Page<any>>('playlistItems', {
       part: 'contentDetails',
       playlistId: prefix + channelId.slice(2),
       maxResults: max,
     });
-    return (page.items ?? []).map((it) => it.contentDetails.videoId as string);
+    return (page.items ?? []).map((it) => ({
+      id: it.contentDetails.videoId as string,
+      publishedAt: it.contentDetails.videoPublishedAt as string | undefined,
+    }));
   } catch (e) {
     if (e instanceof ApiError && e.status === 404) return [];
     throw e;
@@ -128,30 +158,54 @@ function toVideo(it: any, streamIds: Set<string>): Video {
   };
 }
 
-/** Recent long-form videos and live streams for the given channels. Costs about 2 units per channel. */
+/**
+ * Recent long-form videos and live streams for the given channels, handed to `onVideos` in batches
+ * as soon as each videos.list call returns, so the feed can fill in while channels are still loading.
+ * Only videos missing from `known` (or still live/upcoming there) are looked up.
+ * Costs 2 units per channel plus 1 per 50 videos looked up.
+ */
 export async function fetchChannelVideos(
   channels: Channel[],
-  onProgress?: (done: number, total: number) => void,
-): Promise<Video[]> {
-  let done = 0;
-  const streamIds = new Set<string>();
-  const perChannel = await mapPool(channels, CONCURRENCY, async (c) => {
-    const [videos, streams] = await Promise.all([
-      playlistVideoIds('UULF', c.id, VIDEOS_PER_CHANNEL),
-      playlistVideoIds('UULV', c.id, STREAMS_PER_CHANNEL),
-    ]);
-    for (const id of streams) streamIds.add(id);
-    onProgress?.(++done, channels.length);
-    return [...videos, ...streams];
-  });
+  known: ReadonlyMap<string, Video>,
+  onVideos: (videos: Video[]) => void,
+  onProgress?: () => void,
+): Promise<void> {
+  const pending = new Map<string, boolean>(); // video id → came from the live-streams playlist
+  const inFlight: Promise<void>[] = [];
 
-  const ids = [...new Set(perChannel.flat())];
-  const pages = await mapPool(chunk(ids, 50), CONCURRENCY, (batch) =>
-    yt<Page<any>>('videos', {
+  const lookUp = (batch: [string, boolean][]) => {
+    const streamIds = new Set(batch.filter(([, s]) => s).map(([id]) => id));
+    const p = yt<Page<any>>('videos', {
       part: 'snippet,contentDetails,liveStreamingDetails',
-      id: batch.join(','),
-      maxResults: 50,
-    }),
-  );
-  return pages.flatMap((p) => p.items ?? []).map((it) => toVideo(it, streamIds));
+      id: batch.map(([id]) => id).join(','),
+      maxResults: DETAILS_BATCH,
+    }).then((page) => onVideos((page.items ?? []).map((it) => toVideo(it, streamIds))));
+    // Marks the promise handled so a failure waits for the Promise.all below instead of
+    // surfacing as an unhandled rejection while channels are still loading.
+    p.catch(() => {});
+    inFlight.push(p);
+  };
+  const flush = (all: boolean) => {
+    while (pending.size >= DETAILS_BATCH || (all && pending.size > 0)) {
+      const batch = [...pending].slice(0, DETAILS_BATCH);
+      for (const [id] of batch) pending.delete(id);
+      lookUp(batch);
+    }
+  };
+
+  await mapPool(channels, CONCURRENCY, async (c) => {
+    const [videos, streams] = await Promise.all([
+      playlistEntries('UULF', c.id, VIDEOS_PER_CHANNEL),
+      playlistEntries('UULV', c.id, STREAMS_PER_CHANNEL),
+    ]);
+    const now = Date.now();
+    for (const e of videos) {
+      if (needsDetails(e, known, false, now) && !pending.has(e.id)) pending.set(e.id, false);
+    }
+    for (const e of streams) if (needsDetails(e, known, true, now)) pending.set(e.id, true);
+    onProgress?.();
+    flush(false);
+  });
+  flush(true);
+  await Promise.all(inFlight);
 }

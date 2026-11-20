@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Channel, Video } from '../types';
-import { chunk, favouriteGroups, keepSubscribed, mapPool, mergeVideos, parseDuration } from './feed';
+import { chunk, favouriteGroups, keepSubscribed, mapPool, mergeVideos, needsDetails, parseDuration } from './feed';
 import { byRecentUse, insertBody } from './playlists';
 import { addQuota, getQuota, pacificDay } from './quota';
 import { parseSettings } from '../store/settings';
@@ -80,6 +80,24 @@ describe('favouriteGroups', () => {
   });
   it('skips favourites with no videos or no longer subscribed', () => {
     expect(favouriteGroups(videos, channels, ['D', 'gone'], 3)).toEqual([]);
+  });
+});
+
+describe('needsDetails', () => {
+  const known = new Map([
+    ['done', video('done', 'c', 5)],
+    ['soon', video('soon', 'c', 1, { live: 'upcoming' })],
+  ]);
+  it('looks up only new videos and cached ones still live or upcoming', () => {
+    expect(needsDetails({ id: 'new', publishedAt: hoursAgo(2) }, known, false, NOW)).toBe(true);
+    expect(needsDetails({ id: 'done', publishedAt: hoursAgo(5) }, known, false, NOW)).toBe(false);
+    expect(needsDetails({ id: 'soon' }, known, true, NOW)).toBe(true);
+  });
+  it('skips uploads past the 30-day window but not streams', () => {
+    const old = { id: 'old', publishedAt: hoursAgo(31 * 24) };
+    expect(needsDetails(old, known, false, NOW)).toBe(false);
+    expect(needsDetails(old, known, true, NOW)).toBe(true);
+    expect(needsDetails({ id: 'private' }, known, false, NOW)).toBe(true);
   });
 });
 
