@@ -149,15 +149,17 @@ h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.08em; color: 
 .add svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
 .add:hover:not(:disabled) { background: var(--line); color: var(--accent-ink); }
 .add:active { transform: scale(0.9); }
-/* Watch Later: over the thumbnail's top-right corner. Shown on hover or focus; always on touch screens. */
+/* Watch Later (and the optional second playlist, as a column to its left): over the thumbnail's
+   top-right corner. Shown on hover or focus; always on touch screens. */
 .later {
   position: absolute; top: 6px; right: 6px; z-index: 1;
-  display: flex; flex-direction: column;
+  display: flex;
   border-radius: 8px;
   background: rgba(0, 0, 0, 0.8); color: #fff;
   opacity: 0;
   transition: opacity 0.12s;
 }
+.later-col { display: flex; flex-direction: column; }
 .later button {
   width: 32px; height: 32px; padding: 0;
   border: 0; border-radius: 8px;

@@ -56,6 +56,8 @@ export interface Settings {
   playlistUsed: Record<string, number>;
   /** YouTube's own Watch Later is closed to third-party apps, so one normal playlist stands in for it. */
   watchLater?: WatchLater;
+  /** A second one-tap playlist, with its own buttons next to Watch Later's. Off until chosen. */
+  secondary?: WatchLater;
   rules: Rule[];
   /** When these settings were last changed (ms); decides which copy wins when syncing. 0 = never. */
   updatedAt: number;

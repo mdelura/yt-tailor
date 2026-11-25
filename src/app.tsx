@@ -29,7 +29,7 @@ export type SyncStatus =
 import { Feed } from './ui/Feed';
 import { PlaylistLinks } from './ui/PlaylistLinks';
 import { PlaylistMenu } from './ui/PlaylistMenu';
-import type { LaterState } from './ui/VideoCard';
+import type { LaterState, Slot } from './ui/VideoCard';
 import { Settings } from './ui/Settings';
 
 const FEED_TTL = 30 * 60_000;
@@ -50,7 +50,8 @@ export function App() {
   const [adding, setAdding] = useState<Video | null>(null);
   /** The playlist dialog is open to choose the Watch Later stand-in, not for a one-off add. */
   const [choosing, setChoosing] = useState(false);
-  const [later, setLater] = useState<Record<string, LaterState>>({});
+  /** Per one-tap playlist (Watch Later, the second one): video id → where it was put. */
+  const [quick, setQuick] = useState<Record<Slot, Record<string, LaterState>>>({ later: {}, secondary: {} });
   const [showSettings, setShowSettings] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [rulesBusy, setRulesBusy] = useState(false);
@@ -75,6 +76,9 @@ export function App() {
   live.current.settings = settings;
   live.current.channels = channels;
   live.current.videos = videos;
+
+  const slotTarget = (slot: Slot): WatchLater | undefined =>
+    slot === 'later' ? live.current.settings.watchLater : live.current.settings.secondary;
 
   const notify = (msg: string) => {
     setToast(msg);
@@ -347,12 +351,17 @@ export function App() {
     }
   }
 
-  /** One-tap add to the playlist standing in for Watch Later; the first tap asks which playlist that is. */
-  async function saveLater(v: Video, where: Where, target: WatchLater | undefined = live.current.settings.watchLater) {
+  /**
+   * One-tap add to the playlist standing in for Watch Later, or to the second one-tap playlist.
+   * The first Watch Later tap asks which playlist that is; the second one only shows once chosen in Settings.
+   */
+  async function saveLater(v: Video, where: Where, slot: Slot = 'later', target = slotTarget(slot)) {
     if (!(await renewIfExpired())) return;
     if (!getToken() && !IS_DEMO) return notify('Sign in to add videos to playlists.');
-    if (!target) return openAdd(v, true);
-    const before = later[v.id]?.done;
+    if (!target) return slot === 'later' ? openAdd(v, true) : undefined;
+    const setLater = (f: (m: Record<string, LaterState>) => Record<string, LaterState>) =>
+      setQuick((q) => ({ ...q, [slot]: f(q[slot]) }));
+    const before = quick[slot][v.id]?.done;
     let removed = false;
     setLater((m) => ({ ...m, [v.id]: { done: m[v.id]?.done, busy: where } }));
     try {
@@ -407,9 +416,11 @@ export function App() {
     if (!adding) return;
     if (choosing) {
       const target: WatchLater = { id: p.id, title: p.title };
-      updateSettings({ ...live.current.settings, watchLater: target });
+      const s = live.current.settings;
+      // The two one-tap playlists must differ, so picking the second one here turns that one off.
+      updateSettings({ ...s, watchLater: target, secondary: s.secondary?.id === p.id ? undefined : s.secondary });
       setAdding(null);
-      return saveLater(adding, where, target);
+      return saveLater(adding, where, 'later', target);
     }
     // Optimistic: close the sheet as soon as the request starts; a failure still shows up as a notice.
     const video = adding;
@@ -501,8 +512,9 @@ export function App() {
         videos={videos}
         onAdd={(v) => openAdd(v)}
         laterTitle={settings.watchLater?.title}
-        later={later}
-        onLater={(v, where) => saveLater(v, where)}
+        secondaryTitle={settings.secondary?.title}
+        quick={quick}
+        onLater={(v, where, slot) => saveLater(v, where, slot)}
         onOpenSettings={() => setShowSettings(true)}
       />
 

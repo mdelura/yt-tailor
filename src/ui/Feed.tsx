@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import type { FavouriteGroup } from '../api/feed';
 import type { Video } from '../types';
-import { VideoCard, type LaterState } from './VideoCard';
+import { VideoCard, type LaterState, type Slot } from './VideoCard';
 
 const PAGE = 48;
 
@@ -10,16 +10,23 @@ interface Props {
   videos: Video[];
   onAdd: (v: Video) => void;
   laterTitle?: string;
-  later: Record<string, LaterState>;
-  onLater: (v: Video, where: 'top' | 'bottom') => void;
+  secondaryTitle?: string;
+  quick: Record<Slot, Record<string, LaterState>>;
+  onLater: (v: Video, where: 'top' | 'bottom', slot: Slot) => void;
   onOpenSettings: () => void;
 }
 
-export function Feed({ groups, videos: all, onAdd, laterTitle, later, onLater, onOpenSettings }: Props) {
+export function Feed({ groups, videos: all, onAdd, laterTitle, secondaryTitle, quick, onLater, onOpenSettings }: Props) {
   // Videos already shown in Favourites above; older ones from those channels stay here.
   const shown = new Set(groups.flatMap((g) => g.videos.map((v) => v.id)));
   const videos = all.filter((v) => !shown.has(v.id));
-  const laterProps = (v: Video) => ({ laterTitle, laterState: later[v.id], onLater });
+  const laterProps = (v: Video) => ({
+    laterTitle,
+    laterState: quick.later[v.id],
+    secondaryTitle,
+    secondaryState: quick.secondary[v.id],
+    onLater,
+  });
   const [visible, setVisible] = useState(PAGE);
   const sentinel = useRef<HTMLDivElement>(null);
 

@@ -105,7 +105,17 @@ function Favourites({ settings, channels, playlists, onChange, onNeedPlaylists }
   const wlOptions = wl && !loaded.some((p) => p.id === wl.id) ? [{ id: wl.id, title: wl.title, count: 0 }, ...loaded] : loaded;
   const setWatchLater = (id: string) => {
     const p = wlOptions.find((x) => x.id === id);
-    onChange({ ...settings, watchLater: p ? { id: p.id, title: p.title } : undefined });
+    // The two one-tap playlists must differ, or both button columns would act on the same list.
+    const secondary = settings.secondary?.id === id ? undefined : settings.secondary;
+    onChange({ ...settings, watchLater: p ? { id: p.id, title: p.title } : undefined, secondary });
+  };
+  const sec = settings.secondary;
+  const secOptions = (sec && !loaded.some((p) => p.id === sec.id) ? [{ id: sec.id, title: sec.title, count: 0 }, ...loaded] : loaded).filter(
+    (p) => p.id !== wl?.id,
+  );
+  const setSecondary = (id: string) => {
+    const p = secOptions.find((x) => x.id === id);
+    onChange({ ...settings, secondary: p ? { id: p.id, title: p.title } : undefined });
   };
   const favs = new Set(settings.favourites);
 
@@ -147,6 +157,25 @@ function Favourites({ settings, channels, playlists, onChange, onNeedPlaylists }
         >
           <option value="">{playlists || wl ? 'Ask on first use' : 'Sign in to load playlists'}</option>
           {wlOptions.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.title}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div class="field">
+        <span>
+          Second playlist <small>(list icons)</small>
+        </span>
+        <select
+          class="wl"
+          aria-label="Second one-tap playlist"
+          value={sec?.id ?? ''}
+          onChange={(e) => setSecondary((e.target as HTMLSelectElement).value)}
+        >
+          <option value="">{playlists || sec ? 'None' : 'Sign in to load playlists'}</option>
+          {secOptions.map((p) => (
             <option key={p.id} value={p.id}>
               {p.title}
             </option>

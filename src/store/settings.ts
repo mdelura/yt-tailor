@@ -62,6 +62,7 @@ export function parseSettings(json: string | null): Settings {
       perChannel: Number.isFinite(n) ? Math.min(10, Math.max(1, n)) : DEFAULTS.perChannel,
       playlistUsed: parsePlaylistUsed(v),
       watchLater: parseWatchLater(v.watchLater),
+      secondary: parseWatchLater(v.secondary),
       rules: Array.isArray(v.rules) ? v.rules.map(parseRule).filter((r: Rule | null): r is Rule => r !== null) : [],
       updatedAt: Number.isFinite(v.updatedAt) ? v.updatedAt : 0,
     };
