@@ -41,12 +41,14 @@ export function PlaylistMenu({ video, playlists, playlistUsed, forLater, onPick,
                   {p.title}
                   <small>{p.count} videos{p.id === lastPlaylist ? ' · last used' : ''}</small>
                 </span>
-                <button onClick={() => onPick(p, 'bottom')}>
-                  ↓ Bottom
-                </button>
-                <button onClick={() => onPick(p, 'top')}>
-                  ↑ Top
-                </button>
+                <span class="where">
+                  <button onClick={() => onPick(p, 'top')}>
+                    ↑ Top
+                  </button>
+                  <button onClick={() => onPick(p, 'bottom')}>
+                    ↓ Bottom
+                  </button>
+                </span>
               </li>
             ))}
           </ul>

@@ -198,6 +198,8 @@ h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.08em; color: 
 .rows li { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-top: 1px solid var(--line); }
 .row-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .row-title small { display: block; color: var(--muted); }
+.where { display: flex; flex-direction: column; gap: 4px; }
+.where button { width: 100%; }
 .channels li { padding: 4px 0; }
 .star { border: 0; background: none; font-size: 20px; padding: 4px 8px; color: var(--muted); }
 .star.on { color: var(--accent-ink); }
